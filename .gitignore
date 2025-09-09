@@ -1,0 +1,39 @@
+# Entornos virtuales
+venv/
+env/
+
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django stuff
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+
+# Logs y configuraciones locales
+*.log
+*.pot
+*.py[cod]
+local_settings.py
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos grandes que no conviene subir
+*.mp4
+*.avi
+*.jpg
+*.png
+*.h5
+*.xml
+*.pth
+
+# Mac y otros sistemas
+.DS_Store
