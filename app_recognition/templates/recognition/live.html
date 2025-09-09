@@ -4,39 +4,434 @@
     <meta charset="UTF-8">
     <title>Object Recognition</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        .objects { margin-top: 20px; }
-        .word { margin: 5px; padding: 8px; background: #f4f4f4; display: inline-block; border-radius: 6px; }
-        button { margin-left: 5px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c, #4facfe, #00f2fe);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
+            z-index: -1;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(26, 32, 44, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 
+                0 25px 80px rgba(0, 0, 0, 0.3),
+                0 10px 40px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 25px;
+            min-height: 80vh;
+        }
+
+        .main-section {
+            background: rgba(45, 55, 72, 0.8);
+            border-radius: 16px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar {
+            background: rgba(45, 55, 72, 0.9);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 20px;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-header::before {
+            content: '🎯';
+            font-size: 1.2rem;
+        }
+
+        h1 {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.2rem;
+            margin-bottom: 25px;
+            font-weight: 700;
+            text-align: center;
+            animation: titleGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            0% { filter: drop-shadow(0 0 10px rgba(102, 126, 234, 0.3)); }
+            100% { filter: drop-shadow(0 0 20px rgba(118, 75, 162, 0.5)); }
+        }
+
+        .portal-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .portal-frame {
+            position: relative;
+            border-radius: 20px;
+            width: 640px;
+            height: 480px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb, #f5576c);
+            padding: 4px;
+            box-shadow: 
+                0 0 60px rgba(102, 126, 234, 0.4),
+                0 0 120px rgba(118, 75, 162, 0.2),
+                0 15px 50px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .portal-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #video-stream {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 14px;
+            filter: contrast(1.1) brightness(1.05);
+        }
+
+        .objects-list {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(80vh - 140px);
+        }
+
+        .objects-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .objects-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .objects-list::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+        }
+
+        .object-item {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            color: white;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            animation: slideInRight 0.5s ease-out;
+        }
+
+        @keyframes slideInRight {
+            0% {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .object-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .object-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(102, 126, 234, 0.5);
+            transform: translateX(-3px);
+        }
+
+        .object-item:hover::before {
+            left: 100%;
+        }
+
+        .object-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #e2e8f0;
+        }
+
+        .object-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+            min-width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.3s;
+        }
+
+        .action-btn:hover::before {
+            left: 100%;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .speak-btn {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+        }
+
+        .speak-btn:hover {
+            box-shadow: 0 8px 25px rgba(240, 147, 251, 0.4);
+        }
+
+        .add-btn {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+        }
+
+        .add-btn:hover {
+            box-shadow: 0 8px 25px rgba(79, 172, 254, 0.4);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1rem;
+        }
+
+        .empty-state::before {
+            content: '👁️';
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 15px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        .status-message {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.2), rgba(0, 242, 254, 0.2));
+            border: 1px solid rgba(79, 172, 254, 0.3);
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin: 15px 0;
+            color: white;
+            font-weight: 600;
+            display: none;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            animation: statusSlide 0.5s ease-out;
+        }
+
+        @keyframes statusSlide {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+                gap: 20px;
+            }
+
+            .sidebar {
+                order: 2;
+                max-height: 400px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                padding: 15px;
+                margin: 10px;
+            }
+
+            .portal-frame {
+                width: 100%;
+                max-width: 400px;
+                height: 300px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .main-section {
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>Live Object Detection</h1>
+    <div class="app-container">
+        <!-- Sección principal con cámara -->
+        <div class="main-section">
+            <h1>🌟 Portal de Reconocimiento IA</h1>
+            
+            <div class="portal-container">
+                <div class="portal-frame">
+                    <div class="portal-inner">
+                        <img id="video-stream" src="{% url 'video_feed' %}" alt="AI Vision Portal">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-message" id="status-message"></div>
+        </div>
 
-    <!-- Streaming de la cámara -->
-    <img id="video-stream" src="{% url 'video_feed' %}" width="640" height="480">
-
-    <!-- Lista de objetos -->
-    <div class="objects" id="objects"></div>
+        <!-- Sidebar con objetos detectados -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                Objetos Detectados
+            </div>
+            <div class="objects-list" id="objects-list">
+                <div class="empty-state">
+                    Esperando detecciones...
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         async function fetchObjects() {
             const response = await fetch("{% url 'objects_view' %}");
             const data = await response.json();
             
-            const container = document.getElementById("objects");
-            container.innerHTML = "";
-
-            data.labels.forEach(word => {
-                const div = document.createElement("div");
-                div.className = "word";
-                div.innerHTML = `
-                    ${word} 
-                    <button onclick="speak('${word}')">🔊</button>
-                    <button onclick="addFlashcard('${word}')">+</button>
+            const container = document.getElementById("objects-list");
+            
+            if (data.labels && data.labels.length > 0) {
+                container.innerHTML = "";
+                
+                data.labels.forEach((word, index) => {
+                    const div = document.createElement("div");
+                    div.className = "object-item";
+                    div.style.animationDelay = `${index * 0.1}s`;
+                    div.innerHTML = `
+                        <div class="object-name">${word}</div>
+                        <div class="object-actions">
+                            <button class="action-btn speak-btn" onclick="speak('${word}')" title="Pronunciar">🔊</button>
+                            <button class="action-btn add-btn" onclick="addFlashcard('${word}')" title="Agregar flashcard">➕</button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            } else {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        Esperando detecciones...
+                    </div>
                 `;
-                container.appendChild(div);
-            });
+            }
         }
 
         async function speak(word) {
@@ -48,11 +443,11 @@
             }
         }
 
-
-
         async function addFlashcard(label) {
+            showStatus("Agregando flashcard...", "loading");
+            
             // capturar la imagen del streaming
-            const imgEl = document.querySelector("img");
+            const imgEl = document.querySelector("#video-stream");
             const canvas = document.createElement("canvas");
             canvas.width = imgEl.width;
             canvas.height = imgEl.height;
@@ -60,18 +455,39 @@
             ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
             const imgData = canvas.toDataURL("image/jpeg");
 
-            const response = await fetch("/recognition/add_flashcard/", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({label: label, img: imgData})
-            });
-            const data = await response.json();
-            alert(data.message || data.error);
+            try {
+                const response = await fetch("/recognition/add_flashcard/", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({label: label, img: imgData})
+                });
+                const data = await response.json();
+                
+                if (data.message) {
+                    showStatus("✅ " + data.message, "success");
+                } else if (data.error) {
+                    showStatus("❌ " + data.error, "error");
+                }
+            } catch (error) {
+                showStatus("❌ Error al agregar flashcard", "error");
+            }
         }
 
+        function showStatus(message, type = "info") {
+            const statusDiv = document.getElementById("status-message");
+            statusDiv.innerHTML = message;
+            statusDiv.style.display = "block";
+            
+            setTimeout(() => {
+                statusDiv.style.display = "none";
+            }, 3000);
+        }
 
         // Actualizar lista cada 2 segundos
         setInterval(fetchObjects, 2000);
+        
+        // Cargar objetos al inicio
+        fetchObjects();
     </script>
 </body>
 </html>
@@ -88,3 +504,300 @@
 
 
 
+
+
+
+
+
+
+
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Object Recognition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            color: #6B73FF;
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 10px rgba(107, 115, 255, 0.3);
+            font-weight: 600;
+        }
+
+        .video-container {
+            margin: 30px 0;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            position: relative;
+        }
+
+        #video-stream {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+            border-radius: 20px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .objects {
+            margin-top: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .word {
+            background: linear-gradient(135deg, #FFD3E1 0%, #FFF0F5 100%);
+            border: 2px solid #FFB6C1;
+            border-radius: 15px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #8B4B8C;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 182, 193, 0.3);
+        }
+
+        .word:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 182, 193, 0.4);
+            background: linear-gradient(135deg, #FFE4E1 0%, #FFF8DC 100%);
+        }
+
+        button {
+            background: linear-gradient(135deg, #98FB98 0%, #F0FFF0 100%);
+            border: 2px solid #90EE90;
+            border-radius: 12px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(144, 238, 144, 0.3);
+            color: #2F8B2F;
+            font-weight: 500;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(144, 238, 144, 0.4);
+            background: linear-gradient(135deg, #ADFF2F 0%, #F5FFFA 100%);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .speak-btn {
+            background: linear-gradient(135deg, #FFE4B5 0%, #FFF8DC 100%);
+            border-color: #DDA0DD;
+            color: #8B4B8C;
+        }
+
+        .speak-btn:hover {
+            background: linear-gradient(135deg, #FFEBCD 0%, #FFFAF0 100%);
+            box-shadow: 0 6px 20px rgba(221, 160, 221, 0.4);
+        }
+
+        .add-btn {
+            background: linear-gradient(135deg, #E0E6FF 0%, #F0F8FF 100%);
+            border-color: #B0C4DE;
+            color: #4682B4;
+        }
+
+        .add-btn:hover {
+            background: linear-gradient(135deg, #E6E6FA 0%, #F8F8FF 100%);
+            box-shadow: 0 6px 20px rgba(176, 196, 222, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .objects {
+                gap: 10px;
+            }
+
+            .word {
+                font-size: 1rem;
+                padding: 12px 16px;
+                flex-direction: column;
+                text-align: center;
+            }
+
+            button {
+                font-size: 0.9rem;
+                padding: 6px 10px;
+            }
+        }
+
+        .loading-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-message {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.1), rgba(0, 242, 254, 0.1));
+            border: 2px solid rgba(79, 172, 254, 0.3);
+            border-radius: 15px;
+            padding: 15px 25px;
+            margin: 20px 0;
+            color: #2c3e50;
+            font-weight: 600;
+            display: none;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            animation: statusSlide 0.5s ease-out;
+        }
+
+        @keyframes statusSlide {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Detección de Objetos en Vivo</h1>
+
+        <!-- Streaming de la cámara -->
+        <div class="video-container">
+            <img id="video-stream" src="{% url 'video_feed' %}" width="640" height="480" alt="Video stream">
+        </div>
+
+        <div class="status-message" id="status-message"></div>
+
+        <!-- Lista de objetos -->
+        <div class="objects" id="objects"></div>
+    </div>
+
+    <script>
+        async function fetchObjects() {
+            const response = await fetch("{% url 'objects_view' %}");
+            const data = await response.json();
+            
+            const container = document.getElementById("objects");
+            container.innerHTML = "";
+
+            data.labels.forEach(word => {
+                const div = document.createElement("div");
+                div.className = "word";
+                div.innerHTML = `
+                    <span>${word}</span>
+                    <button class="speak-btn" onclick="speak('${word}')" title="Escuchar pronunciación">🔊</button>
+                    <button class="add-btn" onclick="addFlashcard('${word}')" title="Agregar a flashcards">➕</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function speak(word) {
+            const response = await fetch(`/recognition/speak/?word=${word}`);
+            const data = await response.json();
+            if (data.audio) {
+                const audio = new Audio("data:audio/mp3;base64," + data.audio);
+                audio.play();
+            }
+        }
+
+        async function addFlashcard(label) {
+            showStatus("Agregando flashcard...", "loading");
+            
+            // capturar la imagen del streaming
+            const imgEl = document.querySelector("img");
+            const canvas = document.createElement("canvas");
+            canvas.width = imgEl.width;
+            canvas.height = imgEl.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+            const imgData = canvas.toDataURL("image/jpeg");
+
+            try {
+                const response = await fetch("/recognition/add_flashcard/", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({label: label, img: imgData})
+                });
+                const data = await response.json();
+                
+                if (data.message) {
+                    showStatus(data.message, "success");
+                } else if (data.error) {
+                    showStatus(data.error, "error");
+                }
+            } catch (error) {
+                showStatus("Error al agregar flashcard", "error");
+            }
+        }
+
+        function showStatus(message, type = "info") {
+            const statusDiv = document.getElementById("status-message");
+            statusDiv.textContent = message;
+            statusDiv.style.display = "block";
+            
+            if (type === "loading") {
+                statusDiv.innerHTML = message + '<div class="loading-indicator"></div>';
+            }
+            
+            setTimeout(() => {
+                statusDiv.style.display = "none";
+            }, 3000);
+        }
+
+        // Actualizar lista cada 2 segundos
+        setInterval(fetchObjects, 2000);
+    </script>
+</body>
+</html> {% endcomment %}

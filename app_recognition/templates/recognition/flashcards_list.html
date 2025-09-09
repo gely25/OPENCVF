@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mis Flashcards</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #fafafa; text-align: center; }
+        h1 { margin-bottom: 20px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            padding: 10px;
+            text-align: center;
+        }
+        .card img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        .word {
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mis Flashcards</h1>
+    <div class="grid">
+        {% for flash in flashcards %}
+            <div class="card">
+                <img src="{{ flash.image.url }}" alt="{{ flash.label }}">
+                <div class="word">{{ flash.label }}</div>
+            </div>
+        {% empty %}
+            <p>No tienes flashcards creadas todavía.</p>
+        {% endfor %}
+    </div>
+</body>
+</html>
