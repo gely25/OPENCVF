@@ -443,28 +443,20 @@
             }
         }
 
+
         async function addFlashcard(label) {
             showStatus("Agregando flashcard...", "loading");
-            
-            // capturar la imagen del streaming
-            const imgEl = document.querySelector("#video-stream");
-            const canvas = document.createElement("canvas");
-            canvas.width = imgEl.width;
-            canvas.height = imgEl.height;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
-            const imgData = canvas.toDataURL("image/jpeg");
 
             try {
                 const response = await fetch("/recognition/add_flashcard/", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({label: label, img: imgData})
+                    body: JSON.stringify({label: label})
                 });
                 const data = await response.json();
                 
                 if (data.message) {
-                    showStatus("✅ " + data.message, "success");
+                    showStatus(data.message, "success");
                 } else if (data.error) {
                     showStatus("❌ " + data.error, "error");
                 }
@@ -472,6 +464,12 @@
                 showStatus("❌ Error al agregar flashcard", "error");
             }
         }
+
+
+
+
+
+
 
         function showStatus(message, type = "info") {
             const statusDiv = document.getElementById("status-message");

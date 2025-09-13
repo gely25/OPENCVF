@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Repaso Flashcards</title>
+  <style>
+    .card { 
+      width:300px; height:200px; perspective:1000px; 
+      margin: 20px auto; cursor:pointer;
+      position: relative; /* para colocar el botón encima */
+    }
+    .card-inner { 
+      position:relative; width:100%; height:100%;
+      transition: transform 0.7s; transform-style: preserve-3d;
+    }
+    .card.flipped .card-inner { transform: rotateY(180deg); }
+    .front, .back {
+      position:absolute; width:100%; height:100%; backface-visibility:hidden;
+      border-radius:10px; display:flex; align-items:center; justify-content:center;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2); font-size:24px;
+      padding:10px; text-align:center;
+    }
+    .front { background:#fff; }
+    .back { background:#f0f0f0; transform:rotateY(180deg); flex-direction: column; }
+    .back img { max-width:100%; max-height:100px; border-radius:5px; margin-top:10px; }
+    .speak-btn {
+      position: absolute;
+      top: 10px; right: 10px;
+      padding:5px 10px; font-size:16px;
+      cursor: pointer;
+    }
+    button.next-btn { margin-top:20px; padding:10px 20px; font-size:16px; }
+  </style>
+</head>
+<body>
+  <h1>Repaso Flashcards</h1>
+  {% if card %}
+  <div class="card" id="flashcard">
+    <div class="card-inner">
+      <div class="front">
+        {{ card.palabra }}
+        <button class="speak-btn" id="speakBtn">🔊</button>
+      </div>
+      <div class="back">
+        {{ card.traduccion }}
+        {% if card.imagen %}
+          <img src="{{ card.imagen.url }}" alt="{{ card.palabra }}">
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div style="text-align:center;">
+    <a href="?index={{ next_index }}"><button class="next-btn">Siguiente</button></a>
+  </div>
+  {% else %}
+    <p>No hay flashcards aún.</p>
+  {% endif %}
+
+  <script>
+    const card = document.getElementById("flashcard");
+    const speakBtn = document.getElementById("speakBtn");
+
+    // Voltear al hacer click en la tarjeta, excepto en el botón de audio
+    card.addEventListener("click", (e) => {
+      if(e.target === speakBtn) return;
+      card.classList.toggle("flipped");
+    });
+
+    // Reproducir audio
+    speakBtn.addEventListener("click", (e) => {
+      e.stopPropagation(); // evitar que la tarjeta se voltee
+      const utterance = new SpeechSynthesisUtterance("{{ card.palabra }}");
+      utterance.lang = "en-US"; // cambiar si quieres español
+      speechSynthesis.speak(utterance);
+    });
+  </script>
+</body>
+</html>

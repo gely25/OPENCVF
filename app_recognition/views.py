@@ -10,6 +10,10 @@ from .models import Flashcard
 from gtts import gTTS
 import io
 
+from googletrans import Translator
+translator = Translator()
+
+
 # ==========================
 # Cargar modelo YOLOv8 (nano)
 # ==========================
@@ -100,60 +104,72 @@ def live_view(request):
 
 
 
-
-
-
-
-
-
-
-
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import json, cv2, base64
-from .models import Flashcard
-
 @csrf_exempt
 def add_flashcard(request):
+    """
+    Recibe POST JSON con {"label": "<label_detected>"}
+    Busca la caja en last_boxes, recorta el objeto de last_frame,
+    traduce automáticamente y guarda un Flashcard.
+    """
     global last_boxes, last_frame
     if request.method == "POST":
-        data = json.loads(request.body)
-        label = data.get("label")
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+        label = data.get("label")
         if not (label and last_frame is not None and last_boxes):
             return JsonResponse({"error": "No detection available"}, status=400)
 
-        # Verificar si ya existe una flashcard con ese label (ignora mayúsculas/minúsculas)
-        if Flashcard.objects.filter(label__iexact=label).exists():
+        # Ignorar si ya existe (insensible a mayúsculas)
+        if Flashcard.objects.filter(palabra__iexact=label).exists():
             return JsonResponse({"message": f"La flashcard '{label}' ya existe."}, status=200)
 
-        # Buscar la caja del objeto con ese label
+        # Buscar la caja del objeto con ese label (buscar la primera aparición)
         for lbl, x1, y1, x2, y2 in last_boxes:
             if lbl == label:
-                # Recortar objeto de la imagen original
-                cropped = last_frame[y1:y2, x1:x2]
+                # Validar límites
+                h, w = last_frame.shape[:2]
+                x1c = max(0, min(w - 1, x1))
+                x2c = max(0, min(w, x2))
+                y1c = max(0, min(h - 1, y1))
+                y2c = max(0, min(h, y2))
 
-                # Convertir a JPG y luego base64
+                if x2c <= x1c or y2c <= y1c:
+                    return JsonResponse({"error": "Invalid bounding box"}, status=400)
+
+                # Recortar objeto de la imagen original
+                cropped = last_frame[y1c:y2c, x1c:x2c]
+
+                # Convertir a JPG y luego base64 (sin prefijos)
                 _, buffer = cv2.imencode(".jpg", cropped)
                 img_b64 = base64.b64encode(buffer).decode("utf-8")
 
-                # Guardar en el modelo Flashcard
-                flashcard = Flashcard(label=label)
-                flashcard.save_image_from_base64(img_b64)
-                flashcard.save()
+                # Traducción automática (inglés -> español)
+                try:
+                    translation = translator.translate(label, src="en", dest="es").text
+                except Exception:
+                    translation = ""  # si falla la librería de traducción, dejar vacío
 
-                return JsonResponse({"message": f"Flashcard '{label}' creada!"}, status=201)
+                # Guardar en el modelo Flashcard
+                flashcard = Flashcard(palabra=label, traduccion=translation)
+                # Hay que forzar created_at para nombrar archivo (opcional). Guardamos temporalmente para que created_at exista:
+                flashcard.save()  # guardamos primero para obtener id/created_at si quieres usar timestamp
+                # Guardar imagen desde base64
+                flashcard.save_image_from_base64(img_b64)
+                flashcard.save()  # guardamos de nuevo con la imagen
+
+                return JsonResponse({
+                    "message": f"Flashcard '{label}' creada!",
+                    "palabra": label,
+                    "traduccion": translation,
+                    "id": flashcard.id
+                }, status=201)
 
         return JsonResponse({"error": "Object not found"}, status=404)
 
     return JsonResponse({"error": "Invalid request"}, status=400)
-
-
-
-
-
-
-
 
 
 
@@ -167,3 +183,27 @@ from .models import Flashcard
 def flashcards_list(request):
     flashcards = Flashcard.objects.all()
     return render(request, "recognition/flashcards_list.html", {"flashcards": flashcards})
+
+
+
+
+
+from django.shortcuts import render
+from .models import Flashcard
+
+def review_flashcards(request):
+    flashcards = list(Flashcard.objects.all())
+    if not flashcards:
+        return render(request, "recognition/review_flashcards.html", {"flashcards": []})
+
+    # Índice de flashcard actual (del GET o 0 por defecto)
+    index = int(request.GET.get("index", 0))
+    index = index % len(flashcards)  # para que vuelva al inicio
+
+    card = flashcards[index]
+    next_index = (index + 1) % len(flashcards)
+
+    return render(request, "recognition/review_flashcards.html", {
+        "card": card,
+        "next_index": next_index
+    })
