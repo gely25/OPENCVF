@@ -6,8 +6,7 @@
   <style>
     .card { 
       width:300px; height:200px; perspective:1000px; 
-      margin: 20px auto; cursor:pointer;
-      position: relative; /* para colocar el botón encima */
+      margin: 20px auto; cursor:pointer; position: relative;
     }
     .card-inner { 
       position:relative; width:100%; height:100%;
@@ -29,50 +28,87 @@
       padding:5px 10px; font-size:16px;
       cursor: pointer;
     }
-    button.next-btn { margin-top:20px; padding:10px 20px; font-size:16px; }
+    .nav-btn { margin:10px; padding:10px 20px; font-size:16px; }
   </style>
 </head>
 <body>
   <h1>Repaso Flashcards</h1>
-  {% if card %}
+
+  <p style="text-align:center;" id="counter">0/0</p>
+
   <div class="card" id="flashcard">
     <div class="card-inner">
       <div class="front">
-        {{ card.palabra }}
+        <span id="frontText"></span>
         <button class="speak-btn" id="speakBtn">🔊</button>
       </div>
       <div class="back">
-        {{ card.traduccion }}
-        {% if card.imagen %}
-          <img src="{{ card.imagen.url }}" alt="{{ card.palabra }}">
-        {% endif %}
+        <span id="backText"></span>
+        <img id="backImg" src="" alt="" style="display:none;">
       </div>
     </div>
   </div>
+
   <div style="text-align:center;">
-    <a href="?index={{ next_index }}"><button class="next-btn">Siguiente</button></a>
+    <button class="nav-btn" id="prevBtn">Anterior</button>
+    <button class="nav-btn" id="nextBtn">Siguiente</button>
   </div>
-  {% else %}
-    <p>No hay flashcards aún.</p>
-  {% endif %}
 
   <script>
+    const flashcards = {{ flashcards|safe }};
+    const total = flashcards.length;
+    const storageKey = "flashcardIndex";
+
+    const frontText = document.getElementById("frontText");
+    const backText = document.getElementById("backText");
+    const backImg = document.getElementById("backImg");
+    const counter = document.getElementById("counter");
     const card = document.getElementById("flashcard");
     const speakBtn = document.getElementById("speakBtn");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
 
-    // Voltear al hacer click en la tarjeta, excepto en el botón de audio
+    let currentIndex = parseInt(localStorage.getItem(storageKey)) || 0;
+
+    function showCard(index) {
+      const c = flashcards[index];
+      frontText.textContent = c.palabra;
+      backText.textContent = c.traduccion;
+      if(c.imagen){
+        backImg.src = c.imagen;
+        backImg.style.display = "block";
+      } else {
+        backImg.style.display = "none";
+      }
+      counter.textContent = `${index+1}/${total}`;
+      card.classList.remove("flipped");
+      localStorage.setItem(storageKey, index);
+    }
+
+    prevBtn.addEventListener("click", () => {
+      currentIndex = (currentIndex - 1 + total) % total;
+      showCard(currentIndex);
+    });
+
+    nextBtn.addEventListener("click", () => {
+      currentIndex = (currentIndex + 1) % total;
+      showCard(currentIndex);
+    });
+
     card.addEventListener("click", (e) => {
       if(e.target === speakBtn) return;
       card.classList.toggle("flipped");
     });
 
-    // Reproducir audio
     speakBtn.addEventListener("click", (e) => {
-      e.stopPropagation(); // evitar que la tarjeta se voltee
-      const utterance = new SpeechSynthesisUtterance("{{ card.palabra }}");
-      utterance.lang = "en-US"; // cambiar si quieres español
+      e.stopPropagation();
+      const utterance = new SpeechSynthesisUtterance(flashcards[currentIndex].palabra);
+      utterance.lang = "en-US";
       speechSynthesis.speak(utterance);
     });
+
+    // Mostrar la tarjeta inicial al cargar
+    showCard(currentIndex);
   </script>
 </body>
 </html>

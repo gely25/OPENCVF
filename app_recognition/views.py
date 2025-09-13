@@ -186,24 +186,24 @@ def flashcards_list(request):
 
 
 
-
-
 from django.shortcuts import render
 from .models import Flashcard
+import json
 
 def review_flashcards(request):
     flashcards = list(Flashcard.objects.all())
     if not flashcards:
         return render(request, "recognition/review_flashcards.html", {"flashcards": []})
 
-    # Índice de flashcard actual (del GET o 0 por defecto)
-    index = int(request.GET.get("index", 0))
-    index = index % len(flashcards)  # para que vuelva al inicio
-
-    card = flashcards[index]
-    next_index = (index + 1) % len(flashcards)
+    # Convertir a lista de dicts para JS
+    flashcards_data = [
+        {
+            "palabra": f.palabra,
+            "traduccion": f.traduccion,
+            "imagen": f.imagen.url if f.imagen else ""
+        } for f in flashcards
+    ]
 
     return render(request, "recognition/review_flashcards.html", {
-        "card": card,
-        "next_index": next_index
+        "flashcards": json.dumps(flashcards_data)
     })
