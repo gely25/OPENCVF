@@ -1,16 +1,29 @@
 from django.db import models
-import base64
-from django.core.files.base import ContentFile
+from django.utils import timezone
+from datetime import timedelta
 
 
+from datetime import timedelta
+from django.utils import timezone
 
 class Flashcard(models.Model):
     palabra = models.CharField(max_length=100)
     traduccion = models.CharField(max_length=100)
-    imagen = models.ImageField(upload_to='flashcards/', blank=True, null=True)
+    imagen = models.ImageField(upload_to="flashcards/", null=True, blank=True)
+    next_review = models.DateField(default=timezone.now)
+    interval = models.IntegerField(default=1)  # días hasta próxima revisión
 
-    def save_image_from_base64(self, img_b64):
-        if img_b64:
-            format, imgstr = img_b64.split(';base64,') if ';base64,' in img_b64 else ('jpeg', img_b64)
-            ext = format.split('/')[-1] if '/' in format else 'jpg'
-            self.imagen.save(f"{self.palabra}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
+    def mark_reviewed(self, success=True):
+        today = timezone.now().date()
+        if success:
+            # aumentar intervalo (curva de repaso básica)
+            self.interval = int(self.interval * 2)
+        else:
+            # si falló, reinicia intervalo
+            self.interval = 1
+        self.next_review = today + timedelta(days=self.interval)
+        self.save()
+        
+        
+    
+    

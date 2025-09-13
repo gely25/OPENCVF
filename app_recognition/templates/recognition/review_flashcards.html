@@ -28,7 +28,9 @@
       padding:5px 10px; font-size:16px;
       cursor: pointer;
     }
-    .nav-btn { margin:10px; padding:10px 20px; font-size:16px; }
+    .review-btn { 
+      margin:10px; padding:10px 20px; font-size:16px; cursor:pointer;
+    }
   </style>
 </head>
 <body>
@@ -50,27 +52,32 @@
   </div>
 
   <div style="text-align:center;">
-    <button class="nav-btn" id="prevBtn">Anterior</button>
-    <button class="nav-btn" id="nextBtn">Siguiente</button>
+    <button class="review-btn" id="rememberBtn">✅ Recordé</button>
+    <button class="review-btn" id="forgetBtn">❌ No recordé</button>
   </div>
 
   <script>
-    const flashcards = {{ flashcards|safe }};
-    const total = flashcards.length;
-    const storageKey = "flashcardIndex";
-
+    let flashcards = {{ flashcards|safe }};
     const frontText = document.getElementById("frontText");
     const backText = document.getElementById("backText");
     const backImg = document.getElementById("backImg");
     const counter = document.getElementById("counter");
     const card = document.getElementById("flashcard");
     const speakBtn = document.getElementById("speakBtn");
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
+    const rememberBtn = document.getElementById("rememberBtn");
+    const forgetBtn = document.getElementById("forgetBtn");
 
-    let currentIndex = parseInt(localStorage.getItem(storageKey)) || 0;
+    let currentIndex = 0;
 
     function showCard(index) {
+      if(flashcards.length === 0){
+        frontText.textContent = "¡Repaso completado!";
+        backText.textContent = "";
+        backImg.style.display = "none";
+        counter.textContent = "0/0";
+        return;
+      }
+
       const c = flashcards[index];
       frontText.textContent = c.palabra;
       backText.textContent = c.traduccion;
@@ -80,26 +87,41 @@
       } else {
         backImg.style.display = "none";
       }
-      counter.textContent = `${index+1}/${total}`;
+      counter.textContent = `${index+1}/${flashcards.length}`;
       card.classList.remove("flipped");
-      localStorage.setItem(storageKey, index);
     }
 
-    prevBtn.addEventListener("click", () => {
-      currentIndex = (currentIndex - 1 + total) % total;
+    function markAsReviewed(success=true){
+      const id = flashcards[currentIndex].id;
+      fetch(`/flashcards/${id}/reviewed/`, {
+          method: "POST",
+          headers: {'X-CSRFToken': '{{ csrf_token }}'},
+          body: JSON.stringify({success: success})
+      });
+    }
+
+    // Botón "Recordé" → eliminar de la lista
+    rememberBtn.addEventListener("click", () => {
+      markAsReviewed(true);
+      flashcards.splice(currentIndex, 1);
+      if(currentIndex >= flashcards.length) currentIndex = 0;
       showCard(currentIndex);
     });
 
-    nextBtn.addEventListener("click", () => {
-      currentIndex = (currentIndex + 1) % total;
+    // Botón "No recordé" → pasar a la siguiente tarjeta, no eliminar
+    forgetBtn.addEventListener("click", () => {
+      markAsReviewed(false);
+      currentIndex = (currentIndex + 1) % flashcards.length;
       showCard(currentIndex);
     });
 
+    // Voltear tarjeta
     card.addEventListener("click", (e) => {
       if(e.target === speakBtn) return;
       card.classList.toggle("flipped");
     });
 
+    // Audio
     speakBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const utterance = new SpeechSynthesisUtterance(flashcards[currentIndex].palabra);
@@ -107,7 +129,7 @@
       speechSynthesis.speak(utterance);
     });
 
-    // Mostrar la tarjeta inicial al cargar
+    // Mostrar primera tarjeta
     showCard(currentIndex);
   </script>
 </body>

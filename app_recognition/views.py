@@ -186,12 +186,13 @@ def flashcards_list(request):
 
 
 
-from django.shortcuts import render
-from .models import Flashcard
-import json
+
+from django.utils import timezone
 
 def review_flashcards(request):
-    flashcards = list(Flashcard.objects.all())
+    today = timezone.now().date()
+    flashcards = list(Flashcard.objects.filter(next_review__lte=today))
+    
     if not flashcards:
         return render(request, "recognition/review_flashcards.html", {"flashcards": []})
 
@@ -200,10 +201,28 @@ def review_flashcards(request):
         {
             "palabra": f.palabra,
             "traduccion": f.traduccion,
-            "imagen": f.imagen.url if f.imagen else ""
+            "imagen": f.imagen.url if f.imagen else "",
+            "id": f.id
         } for f in flashcards
     ]
 
     return render(request, "recognition/review_flashcards.html", {
         "flashcards": json.dumps(flashcards_data)
     })
+
+
+
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+from .models import Flashcard
+
+@csrf_exempt
+def flashcard_reviewed(request, pk):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        flashcard = Flashcard.objects.get(pk=pk)
+        success = data.get("success", True)
+        flashcard.mark_reviewed(success)
+        return JsonResponse({"status":"ok"})

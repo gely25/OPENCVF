@@ -12,8 +12,8 @@ urlpatterns = [
     path("add_flashcard/", views.add_flashcard, name="add_flashcard"),
     path("flashcards/", views.flashcards_list, name="flashcards_list"),
     path("flashcards/review/", views.review_flashcards, name="review_flashcards"),
-
-
-
+    path('flashcards/<int:pk>/reviewed/', views.flashcard_reviewed, name='flashcard_reviewed'),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
